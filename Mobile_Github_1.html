@@ -120,8 +120,8 @@
     <div id="menu-button" onclick="toggleMenu()">☰</div>
 
 <div id="dropdown-menu">
-  <a href="Mobile_Github_1.html">TU Mobile Demo</a>
-  <a href="Event_Github_1.html">Event Demo</a>
+  <a href="TU_Mobile_Test_15.html">TU Mobile Journey</a>
+  <a href="Passport_Update_3.html">Passport Journey</a>
 </div>
   <div class="container">
     <div class="content">
@@ -131,8 +131,12 @@
          <input type="text" id="name" placeholder="Full Name" required />
          <input type="text" id="email" placeholder="Phone Number or Email Address" required />
          <button id="generate">🚀 I'm ready to go!</button>
+         <button id="noIDFlow">😬 I’ve not got my ID with me</button>
         </div>
-
+        <div id="emailOnlyFlow" style="display:none;">
+  <input type="email" id="backupEmail" placeholder="Your email address" />
+  <button id="sendBackup" disabled>🚀 Send it!</button>
+</div>
         <div id="countdown"></div>
         <div id="output"></div>
         <div id="resultsBox" style="display: none;"></div>
@@ -143,200 +147,270 @@
       </div>
     </div>
   </div>
+<script>
+let uniqueId = null;
+let token = null;
 
-  <script>
-    let uniqueId = null;
-    let token = null;
+function generateUniqueCode() {
+  const now = new Date();
+  const pad = (n) => n.toString().padStart(2, '0');
+  return `${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${Math.floor(Math.random() * 900 + 100)}`;
+}
 
-    function generateUniqueCode() {
-      const now = new Date();
-      const pad = (n) => n.toString().padStart(2, '0');
-      return `${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${Math.floor(Math.random() * 900 + 100)}`;
+function toggleMenu() {
+  const menu = document.getElementById("dropdown-menu");
+  menu.style.display = menu.style.display === "block" ? "none" : "block";
+}
+
+document.getElementById("noIDFlow").addEventListener("click", () => {
+  document.getElementById("formInputs").style.display = "none";
+  document.getElementById("emailOnlyFlow").style.display = "block";
+});
+
+document.getElementById("backupEmail").addEventListener("input", function () {
+  const email = this.value.trim();
+  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  document.getElementById("sendBackup").disabled = !isValidEmail;
+});
+
+document.getElementById("sendBackup").addEventListener("click", async () => {
+  const email = document.getElementById("backupEmail").value.trim();
+  if (!email) return;
+
+  const output = document.getElementById("output");
+  output.style.display = "block";
+  output.innerHTML = "⏳ Sending your verification link...";
+
+  const uniqueId = generateUniqueCode();
+  const clientRequestID = "req" + uniqueId;
+
+  try {
+    const authRes = await fetch("https://auth.idmission.com/auth/realms/identity/protocol/openid-connect/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "password",
+        client_id: "63739",
+        client_secret: "aKwECmD7QUutNTl7BcEZ63WTBUtS09L0",
+        username: "ev_integ_63739",
+        password: "Tran#28337$"
+      })
+    });
+
+    const authData = await authRes.json();
+    const token = authData.access_token;
+
+    const requestBody = {
+      customerData: {
+        requestType: "IDV-FACE",
+        email,
+        mobileNumber: email,
+        personalData: {
+          uniqueNumber: uniqueId,
+          name: "TU Customer"
+        }
+      },
+      additionalData: {
+        uniqueRequestId: clientRequestID,
+        clientCustomerNumber: uniqueId,
+        clientRequestID: clientRequestID,
+        notifyLink: "true",
+        linkExpireTime: "3D",
+        amount: "100.00"
+      }
+    };
+
+    const qrRes = await fetch("https://api.idmission.com/v4/customer/generate-identity-link", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    const qrData = await qrRes.json();
+    if (qrData?.customerData?.qrCode) {
+  output.innerHTML = `📬 We’ve emailed you a link!<br><br>
+  Do it when you get home — pop your feet up, verify your ID and have a biscuit 🍪<br><br>
+  <button onclick="location.reload()">🎉 Be a pal — let the next person have a go!</button>`;
+} else {
+      output.innerHTML = "❌ Couldn't send the link. Try again later!";
+    }
+  } catch (err) {
+    console.error("Backup flow error:", err);
+    output.innerHTML = "❌ Something went wrong. Please try again.";
+  }
+});
+
+document.getElementById("generate").addEventListener("click", async () => {
+  const name = document.getElementById("name").value.trim();
+  const email = document.getElementById("email").value.trim();
+  const output = document.getElementById("output");
+  const countdownEl = document.getElementById("countdown");
+
+  if (!name || !email) {
+    output.innerHTML = "❌ Please complete all fields.";
+    return;
+  }
+
+  document.getElementById("formInputs").style.display = "none";
+  output.style.display = "block";
+  output.innerHTML = "⏳ Generating QR code...";
+
+  uniqueId = generateUniqueCode();
+  const clientRequestID = "req" + uniqueId;
+
+  try {
+    const authRes = await fetch("https://auth.idmission.com/auth/realms/identity/protocol/openid-connect/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "password",
+        client_id: "63739",
+        client_secret: "aKwECmD7QUutNTl7BcEZ63WTBUtS09L0",
+        username: "ev_integ_63739",
+        password: "Tran#28337$"
+      })
+    });
+
+    const authData = await authRes.json();
+    token = authData.access_token;
+
+    const requestBody = {
+      customerData: {
+        requestType: "IDV-FACE",
+        email,
+        mobileNumber: email,
+        personalData: {
+          uniqueNumber: uniqueId,
+          name
+        }
+      },
+      additionalData: {
+        uniqueRequestId: clientRequestID,
+        clientCustomerNumber: uniqueId,
+        clientRequestID: clientRequestID,
+        notifyLink: "true",
+        linkExpireTime: "3D",
+        amount: "100.00"
+      }
+    };
+
+    const qrRes = await fetch("https://api.idmission.com/v4/customer/generate-identity-link", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    const qrData = await qrRes.json();
+    const qr = qrData?.customerData?.qrCode;
+    if (!qr) {
+      output.innerHTML = "❌ QR generation failed.";
+      return;
     }
 
-    document.getElementById("generate").addEventListener("click", async () => {
-      const name = document.getElementById("name").value.trim();
-      const email = document.getElementById("email").value.trim();
-      const output = document.getElementById("output");
-      const countdownEl = document.getElementById("countdown");
+    output.innerHTML = `<img id="qrImage" src="data:image/jpeg;base64,${qr}" style="max-width:300px;" />`;
 
-      if (!name || !email) {
-        output.innerHTML = "❌ Please complete all fields.";
-        return;
-      }
+    let counter = 20;
+    countdownEl.textContent = `🧨 This QR will self-destruct in ${counter} seconds!`;
+    const timer = setInterval(() => {
+      counter--;
+      countdownEl.textContent = `🧨 This QR will self-destruct in ${counter} seconds!`;
+      if (counter === 0) {
+        clearInterval(timer);
+        document.getElementById("qrImage").style.display = "none";
+        countdownEl.style.display = "none";
 
-      document.getElementById("formInputs").style.display = "none";
-      output.style.display = "block";
-      output.innerHTML = "⏳ Generating QR code.";
+        output.innerHTML = `
+          <div id="explosionContainer" style="
+            font-size: 2.5em;
+            text-align: center;
+            padding: 1em;
+            height: 300px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #000;
+            flex-direction: column;
+          ">
+            <div id="boomMsg">💥 Boom!</div>
+            <div id="scareMsg" style="display: none;">😅 Hope we didn’t scare you!</div>
+            <div id="bouncerMsg" style="display: none;">🛂 Our digital bouncer is making sure you're good to go...</div>
+          </div>`;
 
-      uniqueId = generateUniqueCode();
-      const clientRequestID = "req" + uniqueId;
+        setTimeout(() => {
+          document.getElementById("boomMsg").style.display = "none";
+          document.getElementById("scareMsg").style.display = "block";
+        }, 2000);
 
-      try {
-        const authRes = await fetch("https://auth.idmission.com/auth/realms/identity/protocol/openid-connect/token", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({
-            grant_type: "password",
-            client_id: "63739",
-            client_secret: "aKwECmD7QUutNTl7BcEZ63WTBUtS09L0",
-            username: "ev_integ_63739",
-            password: "Tran#28337$"
-          })
-        });
-        const authData = await authRes.json();
-        token = authData.access_token;
+        setTimeout(() => {
+          document.getElementById("scareMsg").style.display = "none";
+          document.getElementById("bouncerMsg").style.display = "block";
+        }, 5000);
 
-        const requestBody = {
-          customerData: {
-            requestType: "IDV-FACE",
-            email,
-            mobileNumber: email,
-            personalData: {
-              uniqueNumber: uniqueId,
-              name
+        setTimeout(() => {
+          let pollingInterval = setInterval(async () => {
+            try {
+              const resultsRes = await fetch("https://api.idmission.com/v4/customer/get-processed-data", {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${token}`,
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  additionalData: {
+                    clientCustomerNumber: uniqueId,
+                    sendInputImages: "N",
+                    sendProcessedImages: "N",
+                    stripSpecialCharacters: "Y",
+                    sendHostDataInPost: "N",
+                    sendSignatureFromIdInResponse: "N",
+                    sendDocumentIdInResponse: "N",
+                    sendMetaDataInResponse: "N"
+                  }
+                })
+              });
+
+              const results = await resultsRes.json();
+              if (results?.resultData?.verificationResult) {
+                clearInterval(pollingInterval);
+                document.getElementById("explosionContainer").style.display = "none";
+
+                const result = results.resultData;
+                const extracted = results.responseCustomerData?.extractedIdData || {};
+
+                const resultBox = document.getElementById("resultsBox");
+                resultBox.innerHTML = `
+                  <p>✅ ID Check: <strong>${result.verificationResult === "Approved" ? "Passed ✅" : "Failed ❌"}</strong></p>
+                  <p>🗓️ Your ID ${extracted.idNotExpired === "Y" ? "is in date ✅" : "is expired ❌"}</p>
+                  <p>👤 That name matches the one we've got on file ✅</p>
+                  <p>📄 ${
+                    extracted.idType === "DL"
+                      ? "This address matches the one we've got on file ✅"
+                      : "Looks like we might need another document to prove your address 📄"
+                  }</p>
+                  <button onclick="location.reload()">Step up! The velvet rope awaits 🎟️</button>
+                `;
+                resultBox.style.display = "block";
+              }
+            } catch (err) {
+              console.error("Polling error:", err);
             }
-          },
-          additionalData: {
-            uniqueRequestId: clientRequestID,
-            clientCustomerNumber: uniqueId,
-            clientRequestID: clientRequestID,
-            notifyLink: "true",
-            linkExpireTime: "3D",
-            amount: "100.00"
-          }
-        };
-
-        const qrRes = await fetch("https://api.idmission.com/v4/customer/generate-identity-link", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(requestBody)
-        });
-
-        const qrData = await qrRes.json();
-        const qr = qrData?.customerData?.qrCode;
-        if (!qr) {
-          output.innerHTML = "❌ QR generation failed.";
-          return;
-        }
-
-        output.innerHTML = `<img id="qrImage" src="data:image/jpeg;base64,${qr}" style="max-width:300px;" />`;
-
-let counter = 20;
-countdownEl.textContent = `🧨 This QR will self-destruct in ${counter} seconds!`;
-const timer = setInterval(() => {
-  counter--;
-  countdownEl.textContent = `🧨 This QR will self-destruct in ${counter} seconds!`;
-  if (counter === 0) {
-    clearInterval(timer);
-    document.getElementById("qrImage").style.display = "none";
-    countdownEl.style.display = "none";
-
-    // Simulate explosion effect
-     output.innerHTML = `
-  <div id="explosionContainer" style="
-    font-size: 2.5em;
-    text-align: center;
-    padding: 1em;
-    height: 300px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: #000;
-    flex-direction: column;
-  ">
-    <div id="boomMsg">💥 Boom!</div>
-    <div id="scareMsg" style="display: none;">😅 Hope we didn’t scare you!</div>
-    <div id="bouncerMsg" style="display: none;">🛂 Our digital bouncer is making sure you're good to go...</div>
-  </div>`;
-
-setTimeout(() => {
-  document.getElementById("boomMsg").style.display = "none";
-  document.getElementById("scareMsg").style.display = "block";
-}, 2000); // After 2s, go from Boom! → Scare message
-
-setTimeout(() => {
-  document.getElementById("scareMsg").style.display = "none";
-  document.getElementById("bouncerMsg").style.display = "block";
-}, 5000); // After 5s total, go to bouncer
-
-
-    // Start polling every 5 seconds
-    // Start polling every 5 seconds AFTER a delay
-    setTimeout(() => {
-    let pollingInterval = setInterval(async () => {
-        console.log("Polling started...");
-      try {
-        const resultsRes = await fetch("https://api.idmission.com/v4/customer/get-processed-data", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-  additionalData: {
-    clientCustomerNumber: uniqueId,
-    sendInputImages: "N",
-    sendProcessedImages: "N",
-    stripSpecialCharacters: "Y",
-    sendHostDataInPost: "N",
-    sendSignatureFromIdInResponse: "N",
-    sendDocumentIdInResponse: "N",
-    sendMetaDataInResponse: "N"
-  }
-})
-        });
-
-        const results = await resultsRes.json();
-        console.log("Polling results:", results); // ✅ Add this
-
-        if (
-  results &&
-  results.resultData &&
-  results.resultData.verificationResult
-) {
-  // ✅ We have full results — stop polling
-  clearInterval(pollingInterval);
-  document.getElementById("explosionContainer").style.display = "none";
-
- const result = results.resultData;
-const extracted = results.responseCustomerData?.extractedIdData || {};
-
-
-const resultBox = document.getElementById("resultsBox");
-resultBox.innerHTML = `
-  <p>✅ ID Check: <strong>${result.verificationResult === "Approved" ? "Passed ✅" : "Failed ❌"}</strong></p>
-  <p>🗓️ Your ID ${extracted.idNotExpired === "Y" ? "is in date ✅" : "is expired ❌"}</p>
-  <p>👤 That name matches the one we've got on file ✅</p>
-  <p>📄 ${
-    extracted.idType === "DL"
-      ? "This address matches the one we've got on file ✅"
-      : "Looks like we might need another document to prove your address 📄"
-  }</p>
-  <button onclick="location.reload()">Step up! The velvet rope awaits 🎟️</button>
-`;
-
-  resultBox.style.display = "block";
-} else {
-
-          }
-      } catch (error) {
-        console.error("Polling error:", error);
+          }, 5000);
+        }, 15000); // delay before polling starts
       }
-    }, 5000);
-  },15000);
+    }, 1000);
+  } catch (err) {
+    output.innerHTML = "❌ Something went wrong generating the QR code.";
+    console.error("QR generation error:", err);
   }
-}, 1000);
-    } catch (err) {
-  output.innerHTML = "❌ Something went wrong generating the QR code.";
-  console.error("QR generation error:", err);
-}
-}); // closes the generate button click event
-  </script>
-  <script>
+});
+</script>
+<script>
   function toggleMenu() {
     const menu = document.getElementById("dropdown-menu");
     menu.style.display = menu.style.display === "block" ? "none" : "block";
