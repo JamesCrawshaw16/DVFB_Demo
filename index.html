@@ -8,8 +8,12 @@
       margin: 0;
       font-family: Arial, sans-serif;
       background: #f4f4f4;
+      background-image: url('https://media.istockphoto.com/id/1265448899/photo/biometric-verification-and-face-detection.jpg?s=612x612&w=0&k=20&c=MS4qDvNcZ956b6DFTzGpNfYQ_q5S-Y8POu8mE_bkasY=');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      color: #333;
       text-align: center;
-      padding: 3em 1em;
     }
 
     #menu-button {
@@ -50,20 +54,77 @@
       background-color: #f0f0f0;
     }
 
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 4em 2em;
+      background-color: rgba(255,255,255,0.9);
+      border-radius: 16px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    }
+
     .logo {
       max-width: 200px;
-      margin-bottom: 2em;
+      margin-bottom: 1em;
     }
 
     h1 {
       color: #0078A0;
-      font-size: 1.8em;
+      font-size: 2em;
       margin-bottom: 0.5em;
     }
 
-    p {
-      font-size: 1.1em;
+    .grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 2em;
+      margin-top: 3em;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      width: 300px;
+      overflow: hidden;
+      text-align: left;
+      text-decoration: none;
       color: #333;
+      transition: transform 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+    }
+
+    .card img {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+    }
+
+    .card-content {
+      padding: 1em;
+    }
+
+    .card h2 {
+      margin: 0 0 0.5em 0;
+      font-size: 1.3em;
+      color: #0078A0;
+    }
+
+    .card p {
+      font-size: 0.95em;
+      line-height: 1.4;
+      color: #555;
+    }
+
+    @media (max-width: 640px) {
+      .grid {
+        flex-direction: column;
+        align-items: center;
+      }
     }
   </style>
 </head>
@@ -75,9 +136,29 @@
     <a href="Event_Github_1.html">Passport/Event Journey</a>
   </div>
 
-  <img class="logo" src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/TransUnion_logo.svg/1280px-TransUnion_logo.svg.png" alt="TransUnion Logo" />
-  <h1>Welcome to JC's Demo</h1>
-  <p>Use the ☰ menu above to begin your journey.</p>
+  <div class="container">
+    <img class="logo" src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/TransUnion_logo.svg/1280px-TransUnion_logo.svg.png" alt="TransUnion Logo" />
+    <h1>Welcome to Mr Document's Demo Site</h1>
+    <p>Use the menu or choose a journey below:</p>
+
+    <div class="grid">
+      <a href="Event_Github_1.html" class="card">
+        <img src="https://media.istockphoto.com/id/857615704/photo/blurred-defocused-background-of-public-event-exhibition-hall-business-trade-show-or-commercial.jpg?s=612x612&w=0&k=20&c=h-0q8kbiwY7m93CGMIwSg1u98VxALTqNXUzNo5BiHDs=" alt="Event Journey" />
+        <div class="card-content">
+          <h2>Passport Journey</h2>
+          <p>A quick identity check powered by face and document verification — tailored for live events.</p>
+        </div>
+      </a>
+
+      <a href="Mobile_Github_1.html" class="card">
+        <img src="https://github.com/JamesCrawshaw16/tu-mobile-assets/blob/main/602a5b4d-8a38-466a-830c-cf9b7666d4aa.png?raw=true" alt="Mobile Journey" />
+        <div class="card-content">
+          <h2>Mobile Journey</h2>
+          <p>Designed for remote digital onboarding with QR codes, instant feedback, and playful UX.</p>
+        </div>
+      </a>
+    </div>
+  </div>
 
   <script>
     function toggleMenu() {
