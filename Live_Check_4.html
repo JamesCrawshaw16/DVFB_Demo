@@ -395,7 +395,22 @@
       }, 5000);
     }
   </script>
+  <script>
+  function toggleMenu() {
+    const menu = document.getElementById("dropdown-menu");
+    menu.style.display = menu.style.display === "block" ? "none" : "block";
+  }
+
+  document.addEventListener("click", function(event) {
+    const menu = document.getElementById("dropdown-menu");
+    const button = document.getElementById("menu-button");
+    if (!menu.contains(event.target) && !button.contains(event.target)) {
+      menu.style.display = "none";
+    }
+  });
+</script>
 </body>
 </html>
+
 
 
