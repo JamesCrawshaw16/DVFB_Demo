@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>TransUnion Basket – Age Restricted Checkout</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f8;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+
+    header {
+      background-color: #00a9ce;
+      color: white;
+      padding: 30px 20px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 32px;
+    }
+
+    .basket, .consent, .cameraStage, .idStage, .resultMessage {
+      display: none;
+      padding: 40px 20px;
+    }
+
+    .basket.active, .consent.active, .cameraStage.active, .idStage.active, .resultMessage.active {
+      display: block;
+    }
+
+    .basketItems {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      flex-wrap: wrap;
+      margin-top: 30px;
+    }
+
+    .item {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 20px;
+      width: 250px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .item img {
+      width: 100%;
+      border-radius: 8px;
+    }
+
+    .item h3 {
+      color: #00587c;
+    }
+
+    button {
+      background-color: #fdb913;
+      color: black;
+      border: none;
+      padding: 12px 20px;
+      font-size: 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 30px;
+    }
+
+    video {
+      margin-top: 20px;
+      border: 2px solid #ccc;
+    }
+
+    #qrContainer img {
+      margin-top: 20px;
+    }
+
+    #output {
+      white-space: pre-wrap;
+      text-align: left;
+      padding: 20px;
+      margin: 20px auto;
+      background: #fff;
+      border: 1px solid #ccc;
+      max-width: 600px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🛒 Your TransUnion Basket</h1>
+    <p>Some items are age-restricted. We'll just need to verify your age.</p>
+  </header>
+
+  <!-- Basket Page -->
+  <div class="basket active" id="basketSection">
+    <div class="basketItems">
+      <div class="item">
+        <img src="https://github.com/JamesCrawshaw16/tu-mobile-assets/blob/main/7f27c6c4-e7a4-4be4-9f10-d05dc00cc826.png?raw=true" alt="Knife">
+        <h3>TU Chef Knife</h3>
+        <p>🔪 Slice through data and tomatoes alike!</p>
+      </div>
+      <div class="item">
+        <img src="https://github.com/JamesCrawshaw16/tu-mobile-assets/blob/main/232ffc5d-46db-484e-b425-46db38ad7684.png?raw=true" alt="TU Vodka">
+        <h3>TU Vodka</h3>
+        <p>🍸 Now 10% more trustworthy.</p>
+      </div>
+    </div>
+
+    <div style="margin-top: 20px;">
+      <label for="ageLimit">⚙️ Age threshold for demo: </label>
+      <input type="number" id="ageLimit" value="30" min="1" style="width: 60px;" onchange="updateRequiredAge()" />
+      <span>(Change this for demo purposes)</span>
+    </div>
+
+    <div id="preCheckButton">
+      <button onclick="showConsent()">✔️ Verify My Age</button>
+    </div>
+
+    <div id="postCheckButton" style="display: none;">
+      <p style="color: green; font-weight: bold;">✅ Age verified – you're good to go!</p>
+      <button>💳 Go to Payment</button>
+    </div>
+  </div>
+
+  <!-- Consent Page -->
+  <div class="consent" id="consentSection">
+    <h2>🧠 Age Verification Consent</h2>
+    <p>This will use your camera to capture a selfie and estimate your age.</p>
+    <p>By clicking below, you consent to this process.</p>
+    <button onclick="startCameraStage()">📸 Start Age Check</button>
+  </div>
+
+  <!-- Camera Stage -->
+  <div class="cameraStage" id="cameraSection">
+    <video id="webcam" autoplay playsinline width="320" height="240"></video>
+    <br />
+    <button onclick="captureSelfie()">📸 Snap My Selfie</button>
+  </div>
+
+  <!-- ID Stage -->
+  <div class="idStage" id="idSection">
+    <h2>🔍 Take it as a compliment...</h2>
+    <p>But you're looking a bit young today.</p>
+    <button onclick="generateIdentityLink()">🪪 Start ID Check</button>
+    <p>This part is best done on your phone. Grab your phone and ID!</p>
+    <div id="qrContainer"></div>
+  </div>
+
+  <!-- Final Result -->
+  <div class="resultMessage" id="finalResult"></div>
+
+  <canvas id="canvas" style="display:none;"></canvas>
+  <div id="output"></div>
+
+  <script>
+    let selfieImage = "", token = "", uniqueId = "";
+    let requiredAge = 30;
+
+    function updateRequiredAge() {
+      const input = document.getElementById("ageLimit");
+      requiredAge = parseInt(input.value);
+      console.log("🔧 Required age updated to:", requiredAge);
+    }
+
+    const webcam = document.getElementById("webcam");
+    const canvas = document.getElementById("canvas");
+    const output = document.getElementById("output");
+    const finalResult = document.getElementById("finalResult");
+
+    function showSection(id) {
+      document.querySelectorAll(".basket, .consent, .cameraStage, .idStage, .resultMessage").forEach(div => {
+        div.classList.remove("active");
+      });
+      document.getElementById(id).classList.add("active");
+    }
+
+    function showConsent() {
+      showSection("consentSection");
+    }
+
+    function startCameraStage() {
+      showSection("cameraSection");
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => webcam.srcObject = stream)
+        .catch(err => alert("Camera error: " + err.message));
+    }
+
+    function captureBase64FromVideo() {
+      canvas.width = webcam.videoWidth;
+      canvas.height = webcam.videoHeight;
+      canvas.getContext("2d").drawImage(webcam, 0, 0);
+      return canvas.toDataURL("image/jpeg").split(',')[1];
+    }
+
+    async function captureSelfie() {
+      selfieImage = captureBase64FromVideo();
+
+      const authRes = await fetch("https://auth.idmission.com/auth/realms/identity/protocol/openid-connect/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "password",
+          client_id: "65874",
+          client_secret: "9RX09PI83iAVJV5hszbOFf7Fz5b1gZ43",
+          username: "ev_integ_65874",
+          password: "JC I#10755$"
+        })
+      });
+      const authData = await authRes.json();
+      token = authData.access_token;
+
+      const liveRes = await fetch("https://api.idmission.com/v4/customer/live-check", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          customerData: {
+            policyAcceptanceData: {
+              BiometricTimestamp: new Date().toISOString(),
+              BiometricURL: "https://example.com/biometric",
+              PrivacyPolicyTimestamp: new Date().toISOString(),
+              PrivacypolicyURL: "https://example.com/privacy",
+              TermTimestamp: new Date().toISOString(),
+              TermsofserviceURL: "https://example.com/terms"
+            },
+            biometricData: { selfie: selfieImage }
+          },
+          additionalData: {
+            uniqueRequestId: Date.now().toString(),
+            clientRequestID: Date.now().toString(),
+            stripSpecialCharacters: "Y",
+            estimateAge: "Y",
+            predictGender: "N",
+            gpsCoordinates: "0.000000,0.000000",
+            detectLabel: "N",
+            detectClosedEyes: "N",
+            sendDocumentIdInResponse: "N"
+          }
+        })
+      });
+
+      const liveData = await liveRes.json();
+      const age = parseInt(liveData?.resultData?.estimatedAge || "0");
+
+      if (age >= requiredAge) {
+        showSection("basketSection");
+        document.getElementById("preCheckButton").style.display = "none";
+        document.getElementById("postCheckButton").style.display = "block";
+      } else {
+        showSection("idSection");
+      }
+    }
+
+    async function generateIdentityLink() {
+      uniqueId = "REQ" + Date.now() + Math.floor(Math.random() * 1000);
+      const res = await fetch("https://api.idmission.com/v4/customer/generate-identity-link", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          customerData: {
+            requestType: "IDV",
+            personalData: { uniqueNumber: uniqueId },
+            biometricData: { selfie: selfieImage },
+            policyAcceptanceData: {
+              BiometricTimestamp: new Date().toISOString(),
+              BiometricURL: "https://example.com/biometric",
+              PrivacyPolicyTimestamp: new Date().toISOString(),
+              PrivacypolicyURL: "https://example.com/privacy",
+              TermTimestamp: new Date().toISOString(),
+              TermsofserviceURL: "https://example.com/terms"
+            }
+          },
+          additionalData: {
+            uniqueRequestId: uniqueId,
+            clientCustomerNumber: uniqueId,
+            clientRequestID: uniqueId,
+            notifyLink: "true",
+            linkExpireTime: "3D",
+            amount: "100.00"
+          }
+        })
+      });
+
+      const data = await res.json();
+      const qr = data?.customerData?.qrCode;
+      if (qr) {
+        document.getElementById("qrContainer").innerHTML = `<img src="data:image/png;base64,${qr}" width="200">`;
+        setTimeout(() => {
+          document.getElementById("qrContainer").innerHTML = "🔄 Checking your ID...";
+          pollForResults();
+        }, 20000);
+      }
+    }
+
+    async function pollForResults() {
+      let attempts = 0;
+      const maxAttempts = 20;
+
+      const interval = setInterval(async () => {
+        attempts++;
+        const res = await fetch("https://api.idmission.com/v4/customer/get-processed-data", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            additionalData: {
+              clientCustomerNumber: uniqueId,
+              sendInputImages: "N",
+              sendProcessedImages: "N",
+              stripSpecialCharacters: "Y",
+              sendHostDataInPost: "N",
+              sendSignatureFromIdInResponse: "N",
+              sendDocumentIdInResponse: "N",
+              sendMetaDataInResponse: "N"
+            }
+          })
+        });
+
+        const result = await res.json();
+        const verdict = result?.resultData?.verificationResult;
+        if (verdict) {
+          clearInterval(interval);
+          if (verdict === "Approved") {
+            showSection("basketSection");
+            document.getElementById("preCheckButton").style.display = "none";
+            document.getElementById("postCheckButton").style.display = "block";
+          } else {
+            finalResult.textContent = "❌ Oh no – looks like you need to speak to a person instead.\nDon't worry, we've called one over.";
+            showSection("finalResult");
+          }
+        }
+
+        if (attempts >= maxAttempts) {
+          clearInterval(interval);
+          finalResult.textContent = "❌ Timed out waiting for ID upload.";
+          showSection("finalResult");
+        }
+      }, 5000);
+    }
+  </script>
+</body>
+</html>
