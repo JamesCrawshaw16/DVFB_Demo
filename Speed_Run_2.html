@@ -179,11 +179,27 @@
     </div>
   </div>
 
-<script>
+  <script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBGxHaTTrVLO0zo-c06QHna5VWSlhWvo5w",
+  authDomain: "speed-run-58434.firebaseapp.com",
+  projectId: "speed-run-58434",
+  storageBucket: "speed-run-58434.appspot.com",
+  messagingSenderId: "175704725739",
+  appId: "1:175704725739:web:c7f67817ff075f92ad06ae",
+  measurementId: "G-R2DL7F1CY0"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
 // ===== Game state =====
 let token = null;
 let uniqueId = null;
-let startTs = null; // when Start ▶ is clicked
+let startTs = null;
 let attempts = Number(localStorage.getItem('tu_ar_attempts')||'0');
 
 // Elements
@@ -211,10 +227,10 @@ function setHidden(el, yes){ el.classList.toggle('hidden', !!yes); }
 function showCountdown(ttl){
   let counter = ttl;
   setHidden(countdownEl, false);
-  countdownEl.textContent = `⏳ This QR will self‑destruct in ${counter} seconds!`;
+  countdownEl.textContent = `⏳ This QR will self-destruct in ${counter} seconds!`;
   const t = setInterval(()=>{
     counter--; 
-    countdownEl.textContent = `⏳ This QR will self‑destruct in ${counter} seconds!`;
+    countdownEl.textContent = `⏳ This QR will self-destruct in ${counter} seconds!`;
     if(counter<=0){ clearInterval(t); setHidden(countdownEl,true); explode(); }
   },1000);
 }
@@ -225,7 +241,6 @@ function explode(){
   status.textContent = '';
   setTimeout(()=>{ boom.textContent = '😅 Nice explosion!'; }, 1600);
   setTimeout(()=>{ boom.textContent = '🎮 The game judge is tallying your run…'; }, 3600);
-  // After a short dramatic pause, begin polling
   setTimeout(startPolling, 7000);
 }
 
@@ -301,7 +316,7 @@ async function startPolling(){
           clearInterval(interval);
           setHidden(boom,true);
           const ended = performance.now();
-          const seconds = (ended - startTs)/1000; // total speed‑run time
+          const seconds = (ended - startTs)/1000;
           showResult(seconds, verdict);
         }
       }catch(e){ console.error('Polling error', e); }
@@ -309,7 +324,7 @@ async function startPolling(){
   }catch(e){ console.error(e); }
 }
 
-function showResult(seconds, verdict){
+async function showResult(seconds, verdict){
   const pass = verdict === 'Approved';
   const verdictMsg = pass ? 'Passed ✅' : 'Failed ❌';
   const pretty = seconds.toFixed(2);
@@ -317,9 +332,9 @@ function showResult(seconds, verdict){
   setHidden(timePanel,false);
 
   const name = (document.getElementById('arcadeName').value || 'AAA').toUpperCase();
-  saveScore(name, seconds);
-  renderLeaderboard();
-  renderTopScore();
+  await saveScore(name, seconds);
+  await renderLeaderboard();
+  await renderTopScore();
 
   output.innerHTML = `
     <div class="results">
@@ -329,47 +344,46 @@ function showResult(seconds, verdict){
     </div>`;
 }
 
-// ===== Leaderboard (localStorage) =====
-function loadScores(){
-  try{ return JSON.parse(localStorage.getItem('tu_ar_leaderboard')||'[]'); }catch{ return [] }
+// ===== Leaderboard (Firestore) =====
+async function loadScores(){
+  const q = query(collection(db, "scores"), orderBy("seconds", "asc"), limit(20));
+  const snap = await getDocs(q);
+  return snap.docs.map(doc => doc.data());
 }
-function saveScores(arr){ localStorage.setItem('tu_ar_leaderboard', JSON.stringify(arr)); }
-function saveScore(name, seconds){
-  const arr = loadScores();
-  arr.push({name, seconds, date: new Date().toISOString()});
-  arr.sort((a,b)=>a.seconds-b.seconds);
-  saveScores(arr.slice(0,20)); // keep top 20
+
+async function saveScore(name, seconds){
+  await addDoc(collection(db, "scores"), {
+    name,
+    seconds,
+    date: new Date().toISOString()
+  });
 }
-function renderLeaderboard(){
-  const arr = loadScores();
+
+async function renderLeaderboard(){
+  const arr = await loadScores();
   lbTableBody.innerHTML = '';
   arr.forEach((row, i)=>{
     const tr = document.createElement('tr');
     const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);
-   const dateStr = new Date(row.date).toLocaleString('en-GB', {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit'
-});
-tr.innerHTML = `<td class="medal">${medal}</td><td>${row.name}</td><td>${row.seconds.toFixed(2)}</td><td>${dateStr}</td>`;
+    tr.innerHTML = `<td class="medal">${medal}</td><td>${row.name}</td><td>${row.seconds.toFixed(2)}</td><td>${new Date(row.date).toLocaleDateString('en-GB')} ${new Date(row.date).toLocaleTimeString('en-GB')}</td>`;
     lbTableBody.appendChild(tr);
   });
   setHidden(leaderboardEl, arr.length===0);
 }
 
-function renderTopScore(){
-  const arr = loadScores();
+async function renderTopScore(){
+  const arr = await loadScores();
   if(arr.length===0){ topScoreValue.textContent = 'No runs yet — you set the pace!'; return; }
   const best = arr[0];
   topScoreValue.textContent = `${best.name} — ${best.seconds.toFixed(2)}s`;
 }
 
-renderLeaderboard();
-renderTopScore();
+(async () => {
+  await renderLeaderboard();
+  await renderTopScore();
+})();
 
-// ===== Wire up Start ▶ (button 1) =====
+// ===== Wire up Start ▶ =====
 const startBtn = document.getElementById('generate');
 startBtn.addEventListener('click', async ()=>{
   const arcadeName = (document.getElementById('arcadeName').value || '').trim();
@@ -380,16 +394,12 @@ startBtn.addEventListener('click', async ()=>{
 
   attempts++; localStorage.setItem('tu_ar_attempts', String(attempts));
 
-  // Reset UI
   output.textContent=''; qrWrap.innerHTML=''; status.textContent='';
   setHidden(timePanel,true); setHidden(leaderboardEl,true); setHidden(boom,true);
 
   try{
     output.innerHTML = '<span class="arcade">⏳ Generating QR…</span>';
-
-    // mark the start line *right before* we request the QR
     startTs = performance.now();
-
     token = await auth();
     const qrData = await generateLink(arcadeName);
     const qr = qrData?.customerData?.qrCode;
@@ -397,7 +407,6 @@ startBtn.addEventListener('click', async ()=>{
 
     output.innerHTML = '<span class="arcade" style="color:var(--gold);">📱 Scan the QR on your phone and complete the steps…</span>';
     qrWrap.innerHTML = `<img alt="QR" src="data:image/jpeg;base64,${qr}"/>`;
-
     let ttl = 20; showCountdown(ttl);
   }catch(e){
     console.error('Start error', e);
@@ -406,76 +415,28 @@ startBtn.addEventListener('click', async ()=>{
 });
 
 document.getElementById('again').addEventListener('click', ()=>{
-  // soft reset to play again
   output.textContent=''; qrWrap.innerHTML=''; status.textContent='';
   setHidden(timePanel,true); setHidden(boom,true); setHidden(leaderboardEl,false);
   document.getElementById('arcadeName').focus();
 });
 
-// Reset leaderboard (robust single handler)
-function resetLeaderboard(){
-  localStorage.removeItem('tu_ar_leaderboard');
-  renderLeaderboard();
-  renderTopScore();
+async function resetLeaderboard(){
+  const snap = await getDocs(collection(db, "scores"));
+  for (const d of snap.docs) {
+    await deleteDoc(doc(db, "scores", d.id));
+  }
+  await renderLeaderboard();
+  await renderTopScore();
   output.innerHTML = '<span class="arcade">🏁 Leaderboard reset</span>';
 }
 
-document.getElementById('resetLb').addEventListener('click', ()=>{
-  let ok = true;
-  try{
-    if (typeof window.confirm === 'function') {
-      const ans = window.confirm('Reset local leaderboard?');
-      // Some embedded contexts return undefined instead of boolean; treat only explicit false as cancel
-      ok = (ans !== false);
-    }
-  }catch(e){ /* ignore and proceed */ ok = true; }
-  if(ok) resetLeaderboard();
-});
-
-// ===== Lightweight self-tests (run with ?selftest=1 in the URL) =====
-(function(){
-  if(!location.search.includes('selftest=1')) return;
-  const original = localStorage.getItem('tu_ar_leaderboard');
-  try{
-    console.group('%cSpeed Run – Self Tests','color:#0E6F78;font-weight:bold');
-    localStorage.removeItem('tu_ar_leaderboard');
-
-    // Test 1: saveScore sorts ascending (existing)
-    saveScore('AAA', 5.55);
-    saveScore('BBB', 3.21);
-    saveScore('CCC', 4.44);
-    const arr1 = loadScores();
-    console.assert(arr1[0].name==='BBB' && arr1[0].seconds===3.21, 'Top score should be BBB at 3.21s');
-
-    // Test 2: renderTopScore string (existing)
-    renderTopScore();
-    console.assert(topScoreValue.textContent.includes('BBB') && topScoreValue.textContent.includes('3.21'), 'Top score text should include BBB – 3.21s');
-
-    // Test 3: keep max 20 entries (existing)
-    for(let i=0;i<30;i++) saveScore('T'+i, 6+i);
-    const arr2 = loadScores();
-    console.assert(arr2.length<=20, 'Leaderboard should cap at 20 entries');
-
-    // Test 4 (new): renderLeaderboard row count matches data
-    renderLeaderboard();
-    const rows = document.querySelectorAll('#lbTable tbody tr').length;
-    console.assert(rows === loadScores().length, 'Row count should equal leaderboard length');
-
-    // Test 5 (new): reset clears data and top text
-    localStorage.removeItem('tu_ar_leaderboard');
-    renderLeaderboard();
-    renderTopScore();
-    console.assert(loadScores().length===0, 'After reset, leaderboard should be empty');
-    console.assert(topScoreValue.textContent.includes('No runs yet'), 'Top chip should show "No runs yet" after reset');
-
-    console.log('%cAll self-tests executed.','color:#23A3A3');
-    console.groupEnd();
-  } finally {
-    // restore whatever was there
-    if(original===null) localStorage.removeItem('tu_ar_leaderboard'); else localStorage.setItem('tu_ar_leaderboard', original);
+document.getElementById('resetLb').addEventListener('click', async ()=>{
+  if (confirm('Reset leaderboard for everyone?')) {
+    await resetLeaderboard();
   }
-})();
+});
 </script>
+
   <script>
   function toggleMenu() {
     const menu = document.getElementById("dropdown-menu");
@@ -492,8 +453,6 @@ document.getElementById('resetLb').addEventListener('click', ()=>{
 </script>
 </body>
 </html>
-
-
 
 
 
