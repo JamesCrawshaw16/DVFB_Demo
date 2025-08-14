@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TU Speed Run Arcade</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --tu-blue:#0E6F78; /* teal to match badge outline */
+      --tu-blue-dark:#0B555C;
+      --brand-orange:#E45A2A; /* arcade orange */
+      --brand-cyan:#23A3A3; /* accent cyan */
+      --ink:#111;
+      --bg:#0b0f19;
+      --panel:rgba(255,255,255,0.96);
+      --glass:rgba(0,0,0,0.35);
+      --green:#19c37d;
+      --red:#ef4444;
+      --gold:#fbbf24;
+      --shadow:0 12px 30px rgba(0,0,0,0.25);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;
+      background-image:url('https://github.com/JamesCrawshaw16/tu-mobile-assets/blob/main/9653523c-cea9-4b55-8abd-3ed9a1e46a60.png?raw=true');
+      background-size:cover; background-position:center; background-attachment:fixed; color:var(--ink);
+    }
+    .overlay{min-height:100%; backdrop-filter:brightness(0.85); display:flex; align-items:center; justify-content:center; padding:24px}
+    .card{display:grid; grid-template-columns: 1.4fr 1fr; gap:24px; width:min(1000px,95vw); background:var(--panel); border-radius:16px; padding:28px; box-shadow:var(--shadow)}
+    .left{padding-right:8px}
+    .logo{display:flex; align-items:center; justify-content:center}
+    .logo img{max-width:100%; max-height:320px}
+
+    .arcade{font-family: "Press Start 2P", system-ui; text-transform:uppercase; letter-spacing:0.5px}
+    .title{font-size:20px; line-height:1.3; margin:0 0 18px; color:var(--brand-orange)}
+    .sub{font-size:12px; opacity:0.8; margin:0 0 18px}
+
+    .field{display:flex; gap:8px; align-items:center}
+    .field input{
+      flex:1; padding:14px 14px; border-radius:10px; border:1px solid #d9e1ea; font-size:16px;
+    }
+    .btn{appearance:none; border:0; border-radius:12px; padding:14px 16px; font-weight:700; cursor:pointer; background:var(--brand-orange); color:#fff; transition:.15s transform ease, .2s background}
+    .btn:hover{background:#c3491f}
+    .btn:active{transform:translateY(1px)}
+
+    .hud{margin:18px 0; display:flex; gap:12px; flex-wrap:wrap}
+    .chip{padding:10px 12px; border-radius:999px; background:#fff4ef; color:#4a1e11; font-weight:700; font-size:13px; border:1px solid #ffd6c6}
+
+    #output{margin-top:12px}
+    #qrWrap{display:flex; align-items:center; justify-content:center; padding:16px}
+    #qrWrap img{max-width:300px; border-radius:10px; box-shadow:var(--shadow)}
+
+    .countdown{font-weight:900; color:var(--tu-blue); margin:6px 0 0 0}
+
+    .boom{font-size:40px; text-align:center; height:280px; display:grid; place-items:center; font-weight:900}
+
+    .results{background:#f4f9ff; border:1px dashed #b6daee; padding:16px; border-radius:12px; margin-top:10px}
+
+    .time-panel{display:flex; align-items:center; justify-content:space-between; gap:8px; background:#0a1324; color:#fff; padding:14px 16px; border-radius:12px; box-shadow:var(--shadow)}
+    .time-panel .label{opacity:0.7; font-size:12px}
+    .time-panel .value{font-size:22px; font-weight:900}
+
+    .leaderboard{margin-top:18px}
+    .lb-title{display:flex; align-items:center; gap:8px; font-weight:900; text-transform:uppercase; font-size:12px; letter-spacing:0.6px; opacity:0.8}
+    table{width:100%; border-collapse:collapse; margin-top:8px; background:white; border-radius:12px; overflow:hidden}
+    th, td{padding:12px 10px; border-bottom:1px solid #f1f1f1; text-align:left; font-size:14px}
+    th{background:#f9fafb; font-weight:800}
+    tr:last-child td{border-bottom:0}
+    .medal{font-size:18px}
+    .tools{display:flex; gap:8px; margin-top:10px}
+    .ghost{background:#e9eef7; color:#0a1324}
+    .hidden{display:none}
+
+    @media (max-width:860px){
+      .card{grid-template-columns:1fr}
+      .logo{order:-1}
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay">
+    <div class="card">
+      <div class="left">
+        <h2 class="title arcade">Speed Run: ID Check</h2>
+        <p class="sub arcade">Enter your <strong>arcade name</strong>, <strong>grab your phone + a valid photo ID</strong>, then hit <strong>START</strong>. Scan the QR and blaze through the steps—we'll clock your time.</p>
+
+        <div id="qualifier">
+          <div class="field">
+            <input id="arcadeName" maxlength="14" placeholder="AAA, ZED, or your tag" />
+            <button id="generate" class="btn arcade">Start ▶</button>
+          </div>
+          <div class="hud" id="topBar">
+            <span class="chip arcade">Here’s who you have to beat…</span>
+            <span class="chip arcade" id="topScoreValue">—</span>
+          </div>
+        </div>
+
+        <div id="output"></div>
+        <div id="qrWrap"></div>
+        <p id="countdown" class="countdown hidden"></p>
+        <div id="boom" class="boom hidden">💥 Boom!</div>
+        <div id="status" class="sub"></div>
+
+        <div id="timePanel" class="time-panel hidden">
+          <div>
+            <div class="label arcade">Your Speed‑run</div>
+            <div class="value arcade"><span id="timeValue">0.00</span>s</div>
+          </div>
+          <button id="again" class="btn ghost arcade">Go again</button>
+        </div>
+
+        <div id="leaderboard" class="leaderboard hidden">
+          <div class="lb-title arcade">🏆 Leaderboard (Fastest first)</div>
+          <table id="lbTable">
+            <thead><tr><th>#</th><th>Name</th><th>Time (s)</th><th>Date</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <div class="tools">
+            <button id="resetLb" class="btn ghost arcade">Reset leaderboard</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="logo">
+        <img src="https://github.com/JamesCrawshaw16/tu-mobile-assets/blob/main/599f3edf-a27b-4f65-9908-918542a6097c.png?raw=true" alt="TU Arcade Logo" />
+      </div>
+    </div>
+  </div>
+
+<script>
+// ===== Game state =====
+let token = null;
+let uniqueId = null;
+let startTs = null; // when Start ▶ is clicked
+let attempts = Number(localStorage.getItem('tu_ar_attempts')||'0');
+
+// Elements
+const countdownEl = document.getElementById('countdown');
+const output = document.getElementById('output');
+const qrWrap = document.getElementById('qrWrap');
+const boom = document.getElementById('boom');
+const status = document.getElementById('status');
+const timePanel = document.getElementById('timePanel');
+const timeValue = document.getElementById('timeValue');
+const leaderboardEl = document.getElementById('leaderboard');
+const lbTableBody = document.querySelector('#lbTable tbody');
+const topScoreValue = document.getElementById('topScoreValue');
+
+function pad2(n){return n.toString().padStart(2,'0')}
+function generateUniqueCode(){
+  const now = new Date();
+  return `${pad2(now.getDate())}${pad2(now.getHours())}${pad2(now.getMinutes())}${Math.floor(Math.random()*900+100)}`;
+}
+
+function fakeEmail(id){ return `speedrun+${id}@example.com`; }
+
+function setHidden(el, yes){ el.classList.toggle('hidden', !!yes); }
+
+function showCountdown(ttl){
+  let counter = ttl;
+  setHidden(countdownEl, false);
+  countdownEl.textContent = `⏳ This QR will self‑destruct in ${counter} seconds!`;
+  const t = setInterval(()=>{
+    counter--; 
+    countdownEl.textContent = `⏳ This QR will self‑destruct in ${counter} seconds!`;
+    if(counter<=0){ clearInterval(t); setHidden(countdownEl,true); explode(); }
+  },1000);
+}
+
+function explode(){
+  qrWrap.innerHTML = '';
+  setHidden(boom,false);
+  status.textContent = '';
+  setTimeout(()=>{ boom.textContent = '😅 Nice explosion!'; }, 1600);
+  setTimeout(()=>{ boom.textContent = '🎮 The game judge is tallying your run…'; }, 3600);
+  // After a short dramatic pause, begin polling
+  setTimeout(startPolling, 7000);
+}
+
+async function auth(){
+  const res = await fetch("https://auth.idmission.com/auth/realms/identity/protocol/openid-connect/token",{
+    method:"POST",
+    headers:{"Content-Type":"application/x-www-form-urlencoded"},
+    body:new URLSearchParams({
+      grant_type:"password",
+      client_id:"63739",
+      client_secret:"aKwECmD7QUutNTl7BcEZ63WTBUtS09L0",
+      username:"ev_integ_63739",
+      password:"Tran#28337$"
+    })
+  });
+  const data = await res.json();
+  return data.access_token;
+}
+
+async function generateLink(arcadeName){
+  uniqueId = generateUniqueCode();
+  const clientRequestID = 'req'+uniqueId;
+  const email = fakeEmail(uniqueId);
+
+  const body = {
+    customerData:{
+      requestType:"IDV-FACE",
+      email,
+      mobileNumber: email,
+      personalData:{ uniqueNumber: uniqueId, name: arcadeName }
+    },
+    additionalData:{
+      uniqueRequestId: clientRequestID,
+      clientCustomerNumber: uniqueId,
+      clientRequestID: clientRequestID,
+      notifyLink: "true",
+      linkExpireTime:"3D",
+      amount:"100.00"
+    }
+  };
+
+  const qrRes = await fetch("https://api.idmission.com/v4/customer/generate-identity-link",{
+    method:"POST",
+    headers:{"Authorization":`Bearer ${token}`,'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+  return qrRes.json();
+}
+
+async function startPolling(){
+  try{
+    const interval = setInterval(async ()=>{
+      try{
+        const resultsRes = await fetch("https://api.idmission.com/v4/customer/get-processed-data",{
+          method:"POST",
+          headers:{"Authorization":`Bearer ${token}`,'Content-Type':'application/json'},
+          body: JSON.stringify({
+            additionalData:{
+              clientCustomerNumber: uniqueId,
+              sendInputImages:"N",
+              sendProcessedImages:"N",
+              stripSpecialCharacters:"Y",
+              sendHostDataInPost:"N",
+              sendSignatureFromIdInResponse:"N",
+              sendDocumentIdInResponse:"N",
+              sendMetaDataInResponse:"N"
+            }
+          })
+        });
+        const results = await resultsRes.json();
+        const verdict = results?.resultData?.verificationResult;
+        if(verdict){
+          clearInterval(interval);
+          setHidden(boom,true);
+          const ended = performance.now();
+          const seconds = (ended - startTs)/1000; // total speed‑run time
+          showResult(seconds, verdict);
+        }
+      }catch(e){ console.error('Polling error', e); }
+    }, 3000);
+  }catch(e){ console.error(e); }
+}
+
+function showResult(seconds, verdict){
+  const pass = verdict === 'Approved';
+  const verdictMsg = pass ? 'Passed ✅' : 'Failed ❌';
+  const pretty = seconds.toFixed(2);
+  timeValue.textContent = pretty;
+  setHidden(timePanel,false);
+
+  const name = (document.getElementById('arcadeName').value || 'AAA').toUpperCase();
+  saveScore(name, seconds);
+  renderLeaderboard();
+  renderTopScore();
+
+  output.innerHTML = `
+    <div class="results">
+      <p>✅ ID Check: <strong>${verdictMsg}</strong></p>
+      <p>⏱️ Your run: <strong>${pretty}s</strong></p>
+      <p>🎯 Target: beat your best time on the board!</p>
+    </div>`;
+}
+
+// ===== Leaderboard (localStorage) =====
+function loadScores(){
+  try{ return JSON.parse(localStorage.getItem('tu_ar_leaderboard')||'[]'); }catch{ return [] }
+}
+function saveScores(arr){ localStorage.setItem('tu_ar_leaderboard', JSON.stringify(arr)); }
+function saveScore(name, seconds){
+  const arr = loadScores();
+  arr.push({name, seconds, date: new Date().toISOString()});
+  arr.sort((a,b)=>a.seconds-b.seconds);
+  saveScores(arr.slice(0,20)); // keep top 20
+}
+function renderLeaderboard(){
+  const arr = loadScores();
+  lbTableBody.innerHTML = '';
+  arr.forEach((row, i)=>{
+    const tr = document.createElement('tr');
+    const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);
+    tr.innerHTML = `<td class="medal">${medal}</td><td>${row.name}</td><td>${row.seconds.toFixed(2)}</td><td>${new Date(row.date).toLocaleString()}</td>`;
+    lbTableBody.appendChild(tr);
+  });
+  setHidden(leaderboardEl, arr.length===0);
+}
+
+function renderTopScore(){
+  const arr = loadScores();
+  if(arr.length===0){ topScoreValue.textContent = 'No runs yet — you set the pace!'; return; }
+  const best = arr[0];
+  topScoreValue.textContent = `${best.name} — ${best.seconds.toFixed(2)}s`;
+}
+
+renderLeaderboard();
+renderTopScore();
+
+// ===== Wire up Start ▶ (button 1) =====
+const startBtn = document.getElementById('generate');
+startBtn.addEventListener('click', async ()=>{
+  const arcadeName = (document.getElementById('arcadeName').value || '').trim();
+  if(!arcadeName){
+    output.innerHTML = '<span class="arcade" style="color:var(--red);">Enter a name to play!</span>';
+    return;
+  }
+
+  attempts++; localStorage.setItem('tu_ar_attempts', String(attempts));
+
+  // Reset UI
+  output.textContent=''; qrWrap.innerHTML=''; status.textContent='';
+  setHidden(timePanel,true); setHidden(leaderboardEl,true); setHidden(boom,true);
+
+  try{
+    output.innerHTML = '<span class="arcade">⏳ Generating QR…</span>';
+
+    // mark the start line *right before* we request the QR
+    startTs = performance.now();
+
+    token = await auth();
+    const qrData = await generateLink(arcadeName);
+    const qr = qrData?.customerData?.qrCode;
+    if(!qr){ output.innerHTML = '<span class="arcade" style="color:var(--red);">QR generation failed.</span>'; return; }
+
+    output.innerHTML = '<span class="arcade" style="color:var(--gold);">📱 Scan the QR on your phone and complete the steps…</span>';
+    qrWrap.innerHTML = `<img alt="QR" src="data:image/jpeg;base64,${qr}"/>`;
+
+    let ttl = 20; showCountdown(ttl);
+  }catch(e){
+    console.error('Start error', e);
+    output.innerHTML = '<span class="arcade" style="color:var(--red);">Something went wrong starting your run.</span>';
+  }
+});
+
+document.getElementById('again').addEventListener('click', ()=>{
+  // soft reset to play again
+  output.textContent=''; qrWrap.innerHTML=''; status.textContent='';
+  setHidden(timePanel,true); setHidden(boom,true); setHidden(leaderboardEl,false);
+  document.getElementById('arcadeName').focus();
+});
+
+// Reset leaderboard (robust single handler)
+function resetLeaderboard(){
+  localStorage.removeItem('tu_ar_leaderboard');
+  renderLeaderboard();
+  renderTopScore();
+  output.innerHTML = '<span class="arcade">🏁 Leaderboard reset</span>';
+}
+
+document.getElementById('resetLb').addEventListener('click', ()=>{
+  let ok = true;
+  try{
+    if (typeof window.confirm === 'function') {
+      const ans = window.confirm('Reset local leaderboard?');
+      // Some embedded contexts return undefined instead of boolean; treat only explicit false as cancel
+      ok = (ans !== false);
+    }
+  }catch(e){ /* ignore and proceed */ ok = true; }
+  if(ok) resetLeaderboard();
+});
+
+// ===== Lightweight self-tests (run with ?selftest=1 in the URL) =====
+(function(){
+  if(!location.search.includes('selftest=1')) return;
+  const original = localStorage.getItem('tu_ar_leaderboard');
+  try{
+    console.group('%cSpeed Run – Self Tests','color:#0E6F78;font-weight:bold');
+    localStorage.removeItem('tu_ar_leaderboard');
+
+    // Test 1: saveScore sorts ascending (existing)
+    saveScore('AAA', 5.55);
+    saveScore('BBB', 3.21);
+    saveScore('CCC', 4.44);
+    const arr1 = loadScores();
+    console.assert(arr1[0].name==='BBB' && arr1[0].seconds===3.21, 'Top score should be BBB at 3.21s');
+
+    // Test 2: renderTopScore string (existing)
+    renderTopScore();
+    console.assert(topScoreValue.textContent.includes('BBB') && topScoreValue.textContent.includes('3.21'), 'Top score text should include BBB – 3.21s');
+
+    // Test 3: keep max 20 entries (existing)
+    for(let i=0;i<30;i++) saveScore('T'+i, 6+i);
+    const arr2 = loadScores();
+    console.assert(arr2.length<=20, 'Leaderboard should cap at 20 entries');
+
+    // Test 4 (new): renderLeaderboard row count matches data
+    renderLeaderboard();
+    const rows = document.querySelectorAll('#lbTable tbody tr').length;
+    console.assert(rows === loadScores().length, 'Row count should equal leaderboard length');
+
+    // Test 5 (new): reset clears data and top text
+    localStorage.removeItem('tu_ar_leaderboard');
+    renderLeaderboard();
+    renderTopScore();
+    console.assert(loadScores().length===0, 'After reset, leaderboard should be empty');
+    console.assert(topScoreValue.textContent.includes('No runs yet'), 'Top chip should show "No runs yet" after reset');
+
+    console.log('%cAll self-tests executed.','color:#23A3A3');
+    console.groupEnd();
+  } finally {
+    // restore whatever was there
+    if(original===null) localStorage.removeItem('tu_ar_leaderboard'); else localStorage.setItem('tu_ar_leaderboard', original);
+  }
+})();
+</script>
+</body>
+</html>
