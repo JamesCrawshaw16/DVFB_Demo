@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TransUnion Quick Link Generator</title>
+  <style>
+    body {
+  font-family: Arial, sans-serif;
+  padding: 2em;
+  max-width: 600px;
+  margin: auto;
+  position: relative;
+  z-index: 0;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: url("https://www.authenticid.com/wp-content/uploads/2025/06/mdl-mobile-driver-license-california-dmv-scaled-1.jpeg") no-repeat center center fixed;
+  background-size: cover;
+  opacity: 0.2; /* adjust 0.0 to 1.0 for desired transparency */
+  z-index: -1;
+}
+
+
+    img.logo {
+      max-height: 60px;
+      display: block;
+      margin: 0 auto 1em;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    label, input, button {
+      display: block;
+      width: 100%;
+      margin-bottom: 1em;
+    }
+    input {
+      padding: 0.5em;
+      font-size: 1em;
+    }
+    button {
+      padding: 0.7em;
+      font-size: 1em;
+      background-color: #005baa;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #004080;
+    }
+    .output {
+  display: none;
+}
+.output.active {
+  display: block;
+  margin-top: 2em;
+  padding: 1em;
+  background-color: #fff;
+  border: 1px solid #ccc;
+}
+.btn-with-help {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.help-icon {
+  background-color: #005baa;
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.help-icon:hover {
+  background-color: #004080;
+}
+
+
+  </style>
+</head>
+<body>
+
+  <img src="https://www.pngkey.com/png/full/336-3362522_the-transunion-canadian-transunion-logo-png.png" alt="TU Logo" class="logo">
+  <h1>TransUnion Quick Link Generator</h1>
+ <div id="input-section">
+  <p>This tool enables you to generate a document identity verification link. Enter an email address and click the required button depending on ID type.</p>
+
+  <label for="email">Email address:</label>
+  <input type="email" id="email" required>
+
+  <!-- Button 1 (original creds) -->
+  <div class="btn-with-help">
+    <button id="generate">Standard Verification Link</button>
+    <span class="help-icon" onclick="showHelp(1)">?</span>
+  </div>
+
+  <!-- Button 2 (alt creds) -->
+  <div class="btn-with-help">
+    <button id="generate2">Additional Document Verification Link</button>
+    <span class="help-icon" onclick="showHelp(2)">?</span>
+  </div>
+</div>
+
+
+
+  <div class="output" id="output"></div>
+
+  <script>
+    async function generateLink(authDetails) {
+      const email = document.getElementById("email").value.trim();
+      const output = document.getElementById("output");
+
+      if (!email) {
+        output.innerHTML = "❌ Please enter a valid email address.";
+        output.classList.add("active");
+        return;
+      }
+
+      output.innerHTML = "⏳ Generating link...";
+      output.classList.add("active");
+      document.getElementById("input-section").style.display = "none";
+
+
+
+      const customerCode = (() => {
+        const today = new Date();
+        const y = today.getFullYear().toString().slice(-2);
+        const m = (today.getMonth() + 1).toString();
+        const d = today.getDate().toString();
+        const rand = Math.floor(100 + Math.random() * 900);
+        return `${y}${m}${d}${rand}`;
+      })();
+
+      try {
+        // Step 1: Get the token
+        const authResponse = await fetch("https://auth.idmission.com/auth/realms/identity/protocol/openid-connect/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams(authDetails)
+        });
+
+        const authData = await authResponse.json();
+        const token = authData.access_token;
+
+        // Step 2: Send the IDV-FACE request
+        const requestBody = {
+          customerData: {
+            requestType: "IDV-FACE",
+            email: email,
+            customerCode: "",
+            mobileNumber: "",
+            countryCodeSMS: "",
+            personalData: {},
+            policyAcceptanceData: {}
+          },
+          additionalData: {
+            clientRequestID: "test-client-001",
+            notifyLink: "true",
+            linkExpireTime: "3D",
+            amount: "100.00"
+          }
+        };
+
+        const enrollResponse = await fetch("https://api.idmission.com/v4/customer/generate-identity-link", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        const result = await enrollResponse.json();
+        console.log("API response:", result);
+
+        const idLink = result?.customerData?.kycUrl;
+
+       if (idLink) {
+  output.innerHTML = `
+  ✅ Customer Code: <strong>${customerCode}</strong>
+  <span class="help-icon" onclick="alert('Remember this code to find the results in the portal')">?</span>
+  <br>
+  Verification Link: <a href="${idLink}" target="_blank">${idLink}</a>
+  <span class="help-icon" onclick="alert('Send this part to the end user')">?</span>
+  <br><br>
+  <button id="resetBtn">Generate Another Link</button>
+  `;
+  output.classList.add("active");
+
+  // Add event listener to reset button
+  document.getElementById("resetBtn").addEventListener("click", () => {
+    document.getElementById("input-section").style.display = "block";
+    output.classList.remove("active");
+    output.innerHTML = "";
+    document.getElementById("email").value = "";
+  });
+
+
+        } else {
+          output.innerHTML = "❌ Verification link not returned from the server.";
+          output.classList.add("active");
+
+        }
+
+      } catch (error) {
+        console.error("Error during API call:", error);
+        output.innerHTML = "❌ Something went wrong. Check the console for details.";
+        output.classList.add("active");
+
+      }
+    }
+
+    // Button 1 (original credentials)
+    document.getElementById("generate").addEventListener("click", () => {
+      generateLink({
+        grant_type: "password",
+        client_id: "63739",
+        client_secret: "aKwECmD7QUutNTl7BcEZ63WTBUtS09L0",
+        username: "ev_integ_63739",
+        password: "Tran#28337$"
+      });
+    });
+
+    // Button 2 (alternate credentials – dummy)
+    document.getElementById("generate2").addEventListener("click", () => {
+      generateLink({
+        grant_type: "password",
+        client_id: "63739",
+        client_secret: "aKwECmD7QUutNTl7BcEZ63WTBUtS09L0",
+        username: "ev_integ_63739",
+        password: "Tran#28337$"
+      });
+    });
+    function showHelp(buttonNumber) {
+  if (buttonNumber === 1) {
+    alert("This generates a link that supports Photo ID and Selfie check only.");
+  } else if (buttonNumber === 2) {
+    alert("This generates a link that supports Photo ID, Selfie, and the upload of a non Photo ID document.");
+  }
+}
+  </script>
+
+</body>
+</html>
