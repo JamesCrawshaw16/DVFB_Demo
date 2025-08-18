@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>✨ Magic Mirror ✨</title>
+  <style>
+   body {
+  margin: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  /* new background image + subtle dark overlay */
+  background:
+    radial-gradient(circle at 50% 20%, rgba(5,0,9,.55), rgba(5,0,9,.85)),
+    url('https://as2.ftcdn.net/v2/jpg/05/36/32/95/1000_F_536329537_RblOApJIbTIPjNlROJrKKiJaFmceLJvZ.jpg')
+      center / cover fixed no-repeat;
+
+  color: #fff;
+  font-family: 'Cinzel Decorative', cursive;
+  overflow: hidden;
+}
+
+    .scene { position:relative; display:grid; place-items:center; }
+    .viewport {
+  position: relative;
+  width: min(90vw, 600px);
+  aspect-ratio: 3/4;
+  overflow: hidden;
+  /* crop the camera to a gentle oval for a “mirror opening” feel */
+  border-radius: 50% / 56%;
+  background: #000;
+}
+/* make the feed match the crop */
+video, canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  border-radius: 50% / 56%;
+  transition: opacity .25s ease;
+}
+
+    video, canvas { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
+    .mirror {
+  position: absolute;
+  inset: 0;
+  border-radius: 50% / 56%;
+  pointer-events: none;
+  z-index: 2;
+  /* subtle aura */
+  filter: drop-shadow(0 0 14px rgba(167,139,250,.45))
+          drop-shadow(0 0 24px rgba(103,232,249,.25));
+}
+
+/* ORNATE GOLD FRAME — ring only, keeps center clear */
+.mirror{
+  position:absolute; inset:0; border-radius:50% / 56%; pointer-events:none; z-index:2;
+
+  /* gradient gold border only (center stays transparent) */
+  border:18px solid transparent;
+  border-image: conic-gradient(
+      from 30deg,
+      #6d4f1f, #caa969 12.5%, #f8e7b6 25%, #b68a38 37.5%,
+      #f0dc9e 50%, #caa969 62.5%, #8e6a2b 75%, #f7e4b1 87.5%, #6d4f1f
+    ) 1;
+
+  /* glow + bevel */
+  box-shadow:
+    0 0 18px rgba(167,139,250,.45),
+    0 0 30px rgba(103,232,249,.25),
+    inset 0 0 0 3px rgba(255,255,255,.15),
+    inset 0 10px 25px rgba(255,255,255,.08),
+    inset 0 -16px 30px rgba(0,0,0,.45);
+
+  animation: rimPulse 6s ease-in-out infinite alternate;
+}
+@keyframes rimPulse { from{ filter:brightness(1) } to{ filter:brightness(1.12) } }
+
+/* inner glass edge */
+.mirror::after{
+  content:""; position:absolute; inset:22px; border-radius:50% / 56%;
+  box-shadow:
+    inset 0 2px 22px rgba(0,0,0,.55),
+    inset 0 -2px 14px rgba(255,255,255,.12);
+}
+    @keyframes shimmer { from{filter:drop-shadow(0 0 10px #a78bfa);} to{filter:drop-shadow(0 0 25px #67e8f9);} }
+
+    .age {
+      position:absolute; bottom:10%; left:50%; transform:translateX(-50%);
+      background:rgba(0,0,0,.7); border:1px solid rgba(255,255,255,.3);
+      padding:.5rem 1rem; border-radius:999px;
+      font-weight:bold; font-size:1.2rem;
+      box-shadow:0 0 20px rgba(167,139,250,.6);
+      animation: glow 2s ease-in-out infinite alternate;
+      z-index:3;
+    }
+    /* When proclaiming, the text fills the glass */
+/* When proclaiming, the text fills the glass */
+.age.proclaim {
+  position: absolute;
+  inset: 22px;            /* fills the oval interior */
+  border-radius: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  animation: none;
+
+  display: grid;
+  place-items: center;
+  text-align: center;
+
+  font-family: 'Cinzel', serif;
+  font-weight: 800;
+  font-size: clamp(28px, 6.2vw, 60px);
+  line-height: 1.12;
+  text-shadow:
+    0 2px 20px rgba(0,0,0,.7),
+    0 0 30px rgba(167,139,250,.35);
+  padding: 0 10px;
+  z-index: 12;
+
+  /* 👇 this line fixes the “off to the side” bug */
+  transform: none;
+}
+
+
+    /* Ornate SVG overlay */
+#ornate {
+  position: absolute;
+  inset: -6px;              /* sit just outside the oval crop */
+  pointer-events: none;
+  z-index: 3;               /* above video + mirror rim */
+}
+
+    @keyframes glow { from{box-shadow:0 0 6px rgba(167,139,250,.4);} to{box-shadow:0 0 20px rgba(103,232,249,.7);} }
+
+    .controls {
+      margin-top:1rem; display:flex; gap:.8rem; justify-content:center; flex-wrap:wrap;
+      font-family:'Cinzel', serif; position:fixed; bottom:2%; left:50%; transform:translateX(-50%);
+      z-index:4;
+    }
+    button {
+      padding:.6rem 1.2rem; border:none; border-radius:8px;
+      background:linear-gradient(145deg, rgba(167,139,250,.3), rgba(103,232,249,.2)); color:white;
+      cursor:pointer; font-size:15px; letter-spacing:.5px;
+      transition:all .2s; text-shadow:0 0 6px rgba(0,0,0,.6);
+    }
+    button:hover { background:linear-gradient(145deg, rgba(167,139,250,.5), rgba(103,232,249,.4)); transform:scale(1.08); box-shadow:0 0 15px rgba(167,139,250,.5); }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .hint { margin-top:.6rem; font-size:.9rem; opacity:.8; font-family:'Cinzel', serif; text-align:center; position:fixed; bottom:0; width:100%; }
+
+    /* Whorl animation overlay during divination */
+#whorl{
+  position:absolute;
+  inset:22px;                 /* sits inside the inner glass edge */
+  border-radius:50% / 56%;    /* match your oval crop */
+  pointer-events:none;
+  z-index:10;
+  background:
+    conic-gradient(from 0deg,
+      rgba(167,139,250,.24) 0 12%,
+      transparent 12% 25%,
+      rgba(103,232,249,.22) 25% 37%,
+      transparent 37% 50%,
+      rgba(167,139,250,.24) 50% 62%,
+      transparent 62% 75%,
+      rgba(103,232,249,.22) 75% 87%,
+      transparent 87% 100%);
+  filter: blur(1px) drop-shadow(0 0 10px rgba(167,139,250,.4));
+  animation: whorlSpin 1.15s linear infinite;
+}
+
+@keyframes whorlSpin { to { transform: rotate(360deg); } }
+
+/* Feedback overlay (inside the glass, clearly visible) */
+.feedback{
+  position: absolute;
+  inset: 22px;                   /* same inner margin as the glass */
+  border-radius: 50% / 56%;
+  z-index: 13;                   /* above proclamation */
+  pointer-events: auto;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+
+  /* Lift the prompt safely above the bottom rim */
+  padding: 0 8% 16%;
+  gap: 12px;
+}
+
+/* question line */
+.feedback .q{
+  font-family:'Cinzel', serif;
+  font-weight:800;
+  letter-spacing:.5px;
+  text-shadow:0 2px 18px rgba(0,0,0,.6);
+  font-size:clamp(20px,3.2vw,28px);
+}
+
+/* buttons layout */
+.feedback .choices{
+  display:flex; flex-wrap:wrap; gap:12px; justify-content:center;
+}
+
+/* button look (same theme, just a tad larger) */
+.feedback .choices button{
+  padding:.7rem 1.1rem;
+  border:1px solid rgba(255,255,255,.28);
+  border-radius:999px;
+  background:linear-gradient(145deg, rgba(167,139,250,.45), rgba(103,232,249,.35));
+  color:#fff; font-weight:700; letter-spacing:.3px;
+  font-size:clamp(14px,1.8vw,16px);
+  cursor:pointer; text-shadow:0 1px 2px rgba(0,0,0,.5);
+  transition:transform .15s, box-shadow .2s, border-color .2s, background .2s, opacity .2s;
+}
+.feedback .choices button:hover{
+  transform:translateY(-1px) scale(1.03);
+  box-shadow:0 0 14px rgba(167,139,250,.5);
+  border-color:rgba(255,255,255,.5);
+}
+
+/* tiny fade when we dismiss */
+.feedback.hide{ animation: fadeOut .18s ease forwards; }
+@keyframes fadeOut{ to{ opacity:0; transform:translateY(6px);} }
+
+/* Safety: anything with [hidden] really disappears */
+[hidden] { display: none !important; }
+
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="scene">
+    <div class="viewport">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="snapshot" hidden></canvas>
+      <div id="age" class="age" hidden>—</div>
+      <div id="whorl" hidden></div>
+      <div id="feedback" class="feedback" hidden>
+  <div class="q">Was my divination true?</div>
+  <div class="choices">
+    <button data-choice="exact">Aye — true as told</button>
+    <button data-choice="within5">Close — within five winters</button>
+    <button data-choice="younger5">Nay — five winters younger</button>
+    <button data-choice="older5">Nay — five winters older</button>
+  </div>
+</div>
+
+      <div class="mirror"></div>
+     <!-- Ornate, scalable, gold frame (clean version) -->
+<svg id="ornate" viewBox="0 0 1000 1333" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+  <defs>
+    <!-- Gold gradients -->
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#6d4f1f"/>
+      <stop offset="22%"  stop-color="#caa969"/>
+      <stop offset="45%"  stop-color="#f8e7b6"/>
+      <stop offset="65%"  stop-color="#b68a38"/>
+      <stop offset="85%"  stop-color="#f0dc9e"/>
+      <stop offset="100%" stop-color="#6d4f1f"/>
+    </linearGradient>
+    <linearGradient id="goldSoft" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"   stop-color="#f7e4b1"/>
+      <stop offset="50%"  stop-color="#caa969"/>
+      <stop offset="100%" stop-color="#8e6a2b"/>
+    </linearGradient>
+
+    <!-- Soft glow for strokes -->
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- OUTER GOLD RIM (no fill) -->
+  <ellipse cx="500" cy="666.5" rx="456" ry="610"
+           fill="none" stroke="url(#gold)" stroke-width="22"
+           filter="url(#glow)"/>
+
+  <!-- INNER SHADOW/HIGHLIGHT RINGS -->
+  <ellipse cx="500" cy="666.5" rx="435" ry="590"
+           fill="none" stroke="rgba(255,255,255,.22)" stroke-width="6"/>
+  <ellipse cx="500" cy="666.5" rx="412" ry="567"
+           fill="none" stroke="rgba(0,0,0,.35)" stroke-width="8" opacity=".55"/>
+
+  <!-- BEADED RING -->
+  <ellipse cx="500" cy="666.5" rx="442" ry="602"
+           fill="none" stroke="url(#goldSoft)"
+           stroke-width="10" stroke-linecap="round"
+           stroke-dasharray="1 24" opacity=".95"/>
+
+  <!-- SMALL ROSETTES (N, S, E, W) -->
+  <g fill="url(#gold)">
+    <circle cx="500" cy="80"   r="14"/>
+    <circle cx="500" cy="1253" r="14"/>
+    <circle cx="64"  cy="666.5" r="14"/>
+    <circle cx="936" cy="666.5" r="14"/>
+  </g>
+</svg>
+
+    </div>
+    <div class="controls">
+      <button id="open">Awaken the Mirror</button>
+      <button id="capture" disabled>Freeze the Reflection</button>
+      <button id="estimate" disabled>Reveal the Years</button>
+      <button id="retake" hidden>Try Again</button>
+      <input id="fileInput" type="file" accept="image/*" hidden />
+      <button id="upload">Offer a Portrait</button>
+    </div>
+  </div>
+  <div class="hint">Worry not - TransUnion and the TransUnion Magic Mirror delete all faces post-haste! Nary a record is kept within our annals"</div>
+
+<script>
+const IDM = {
+  authUrl: 'https://auth.idmission.com/auth/realms/identity/protocol/openid-connect/token',
+  liveCheckUrl: 'https://api.idmission.com/v4/customer/live-check',
+  client_id: '65874',
+  client_secret: '9RX09PI83iAVJV5hszbOFf7Fz5b1gZ43',
+  username: 'ev_integ_65874',
+  password: 'JC I#10755$'
+};
+
+const video=document.getElementById('video');
+const canvas=document.getElementById('snapshot');
+const ageEl=document.getElementById('age');
+const openBtn=document.getElementById('open');
+const captureBtn=document.getElementById('capture');
+const estimateBtn=document.getElementById('estimate');
+const retakeBtn=document.getElementById('retake');
+const uploadBtn=document.getElementById('upload');
+const fileInput=document.getElementById('fileInput');
+const feedbackEl = document.getElementById('feedback');
+
+
+let stream=null, selfieB64='';
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+openBtn.onclick = async () => {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user' },
+      audio: false
+    });
+    video.srcObject = stream;
+    captureBtn.disabled = false;   // we auto-reveal on capture, so keep disabled until we have a frame
+    estimateBtn.disabled = true;
+    retakeBtn.hidden = true;
+    video.hidden = false;
+    canvas.hidden = true;
+    ageEl.hidden = true;
+    feedbackEl.hidden = true;
+  } catch (e) {
+    alert('The mirror sees nothing: ' + e.message);
+  }
+};
+captureBtn.onclick = () => {
+  // draw a mirrored frame from the live video
+  const w = video.videoWidth || 640;
+  const h = video.videoHeight || 480;
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.translate(w, 0); ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0, w, h);
+
+  // stash the JPEG for the API
+  selfieB64 = canvas.toDataURL('image/jpeg').split(',')[1];
+
+  // show the snapshot, then auto “Reveal the Years”
+  video.hidden = true;
+  canvas.hidden = false;
+  retakeBtn.hidden = false;
+  estimateBtn.disabled = true;
+
+  revealYearsFlow();
+};
+
+
+function showFeedback(age){
+  // show it (clear any previous forced display:none)
+  feedbackEl.style.display = '';
+  feedbackEl.hidden = false;
+  feedbackEl.dataset.age = age;
+
+  // bind directly to each button
+  const buttons = feedbackEl.querySelectorAll('.choices button');
+  buttons.forEach(btn => {
+    btn.onclick = async () => {
+      const record = {
+        choice: btn.dataset.choice,                  // 'exact' | 'within5' | 'younger5' | 'older5'
+        estimatedAge: parseInt(age, 10),
+        clickedAt: new Date().toISOString()
+      };
+
+      // VANISH NOW (strong hide to beat any CSS/UA quirks)
+     feedbackEl.style.display = 'none';  // hard hide
+feedbackEl.hidden = true;           // attribute hide (reinforced by CSS above)
+feedbackEl.style.pointerEvents = 'none'; // block any clicks while it’s gone
+
+      try {
+        if (window.mmLogFeedback) {
+          await window.mmLogFeedback(record);
+        } else {
+          const k = 'mm_feedback_queue';
+          const q = JSON.parse(localStorage.getItem(k) || '[]');
+          q.push(record); localStorage.setItem(k, JSON.stringify(q));
+        }
+      } catch (err) {
+        console.warn('Feedback log failed:', err);
+      }
+    };
+  });
+}
+
+retakeBtn.onclick = () => {
+  const whorl = document.getElementById('whorl');
+  if (whorl) whorl.hidden = true;
+
+  video.style.opacity = '';                 /* ensure reset */
+  canvas.style.opacity = '';                /* ensure reset */
+
+  // restore live view
+  video.hidden = false;
+  canvas.hidden = true;
+
+  // restore badge to bottom if we centered it
+  if (ageEl.dataset.centered === '1') {
+  ageEl.classList.remove('proclaim');
+  delete ageEl.dataset.centered;
+  }
+  ageEl.hidden = true;
+  feedbackEl.hidden = true;
+
+
+  estimateBtn.disabled = true;
+  retakeBtn.hidden = true;
+};
+
+
+uploadBtn.onclick=()=>fileInput.click();
+fileInput.onchange=(e)=>{
+  const file=e.target.files[0]; if(!file)return;
+  const img=new Image();
+  img.onload=()=>{
+    canvas.width=img.width; canvas.height=img.height;
+    canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+    selfieB64=canvas.toDataURL('image/jpeg').split(',')[1];
+   video.hidden = true;
+canvas.hidden = false;
+retakeBtn.hidden = false;
+estimateBtn.disabled = true;
+
+revealYearsFlow(); // auto “Reveal the Years”
+
+  };
+  img.src=URL.createObjectURL(file);
+};
+
+estimateBtn.onclick = () => { revealYearsFlow(); };
+
+async function getToken(){
+  const body=new URLSearchParams({grant_type:'password',client_id:IDM.client_id,client_secret:IDM.client_secret,username:IDM.username,password:IDM.password});
+  const res=await fetch(IDM.authUrl,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
+  const data=await res.json();
+  if(!res.ok)throw new Error(data.error_description||'Token failed');
+  return data.access_token;
+}
+
+async function estimateAge(token,selfie){
+  const payload={
+    customerData:{
+      policyAcceptanceData:{
+        BiometricTimestamp:new Date().toISOString(),BiometricURL:'https://example.com/biometric',
+        PrivacyPolicyTimestamp:new Date().toISOString(),PrivacypolicyURL:'https://example.com/privacy',
+        TermTimestamp:new Date().toISOString(),TermsofserviceURL:'https://example.com/terms'
+      },
+      biometricData:{selfie}
+    },
+    additionalData:{
+      uniqueRequestId:Date.now().toString(),clientRequestID:Date.now().toString(),
+      stripSpecialCharacters:'Y',estimateAge:'Y',predictGender:'N',gpsCoordinates:'0.000000,0.000000',
+      detectLabel:'N',detectClosedEyes:'N',sendDocumentIdInResponse:'N'
+    }
+  };
+  const res=await fetch(IDM.liveCheckUrl,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const data=await res.json();
+  if(!res.ok)throw new Error(data.message||'live-check failed');
+  return parseInt(data?.resultData?.estimatedAge)||'unavailable';
+}
+async function revealYearsFlow(){
+  const whorl = document.getElementById('whorl');
+
+  try {
+    // show the spell; ensure it paints
+    whorl.hidden = false;
+    await new Promise(requestAnimationFrame);   // let browser paint whorl
+
+    // fade out any image we might be showing
+    if (!video.hidden || !canvas.hidden) {
+      video.style.opacity = '0';
+      canvas.style.opacity = '0';
+      await sleep(180);                         // quick fade
+    }
+    video.hidden = true;
+    canvas.hidden = true;
+    video.style.opacity = '';
+    canvas.style.opacity = '';
+
+    ageEl.hidden = true;
+
+    // call the API
+    const token = await getToken();
+    const age = await estimateAge(token, selfieB64);
+
+    // stop the spell; proclaim the years (centered)
+    whorl.hidden = true;
+    ageEl.textContent = `Thy visage speaks of ${age} years`;
+
+    // center the badge for the proclamation
+    ageEl.classList.add('proclaim');
+ageEl.dataset.centered = '1';
+
+ageEl.hidden = false;
+showFeedback(age);
+
+  } catch (e) {
+    whorl.hidden = true;
+    alert('The spell faltered: ' + (e?.message || e));
+    estimateBtn.disabled = false;
+  }
+}
+
+</script>
+<script type="module">
+  // Firebase (CDN modules)
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+  // Your config (from your console)
+  const firebaseConfig = {
+    apiKey: "AIzaSyDOX5gI4wUZoeymqudifBVTPa-TWTQFA6M",
+    authDomain: "magicmirror-b6220.firebaseapp.com",
+    projectId: "magicmirror-b6220",
+    storageBucket: "magicmirror-b6220.firebasestorage.app",
+    messagingSenderId: "77383535018",
+    appId: "1:77383535018:web:37700df7333bd9f95343d3",
+    measurementId: "G-R3MZDEZ7KK"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+
+  // Optional: Anonymous auth (works with the safer rules we discussed)
+  const auth = getAuth(app);
+  try { await signInAnonymously(auth); } catch (e) {
+    console.warn("Anon auth failed (maybe disabled). Continuing if rules allow…", e?.message);
+  }
+
+  // Expose the logger used by showFeedback() in your main script
+  window.mmLogFeedback = async (rec) => {
+    const doc = {
+      ...rec,
+      ts: serverTimestamp()   // Firestore server time (matches the rules we wrote)
+    };
+    await addDoc(collection(db, "age_feedback"), doc);
+    console.log("Feedback logged:", doc);
+  };
+</script>
+
+</body>
+</html>
